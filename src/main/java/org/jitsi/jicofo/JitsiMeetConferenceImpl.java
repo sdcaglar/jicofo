@@ -3015,7 +3015,7 @@ public class JitsiMeetConferenceImpl
 
         /**
          * Expires the COLIBRI channels (via
-         * {@link #terminate(AbstractParticipant, boolean)}) for all
+         * {@link Participant#terminateBridgeSession()}) for all
          * participants.
          * @return the list of participants which were removed from
          * {@link #participants} as a result of this call (does not include

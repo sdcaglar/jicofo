@@ -17,6 +17,7 @@
  */
 package org.jitsi.jicofo;
 
+import org.jetbrains.annotations.*;
 import org.jitsi.jicofo.bridge.*;
 import org.jitsi.osgi.*;
 import org.jitsi.utils.*;
@@ -1346,7 +1347,6 @@ public class JitsiMeetConferenceImpl
                 reason,
                 sendSessionTerminate));
 
-        BridgeSession bridgeSession;
         synchronized (participantLock)
         {
             Jid contactAddress = participant.getMucJid();
@@ -1365,26 +1365,13 @@ public class JitsiMeetConferenceImpl
                 participant.setJingleSession(null);
             }
 
-            bridgeSession = participant.terminateBridgeSession();
-
             boolean removed = participants.remove(participant);
             logger.info("Removed participant: " + removed + ", " + contactAddress);
         }
 
+        BridgeSession bridgeSession = terminateParticipantBridgeSession(participant);
         if (bridgeSession != null)
         {
-            MediaSourceMap removedSources = participant.getSourcesCopy();
-            MediaSourceGroupMap removedGroups = participant.getSourceGroupsCopy();
-
-            synchronized (bridges)
-            {
-                operationalBridges()
-                    .filter(bridge -> !bridge.equals(bridgeSession))
-                    .forEach(
-                        bridge -> bridge.removeSourcesFromOcto(
-                            removedSources, removedGroups));
-            }
-
             maybeExpireBridgeSession(bridgeSession);
         }
     }
@@ -2752,27 +2739,7 @@ public class JitsiMeetConferenceImpl
         {
             for (Participant participant : participants)
             {
-                BridgeSession session = participant.getBridgeSession();
-                participant.terminateBridgeSession();
-
-                // Expire the OctoEndpoints for this participant on other
-                // bridges.
-                if (session != null)
-                {
-                    MediaSourceMap removedSources = participant.getSourcesCopy();
-                    MediaSourceGroupMap removedGroups = participant.getSourceGroupsCopy();
-
-                    // Locking participantLock and the bridges is okay (or at
-                    // least used elsewhere).
-                    synchronized (bridges)
-                    {
-                        operationalBridges()
-                                .filter(bridge -> !bridge.equals(session))
-                                .forEach(
-                                    bridge -> bridge.removeSourcesFromOcto(
-                                            removedSources, removedGroups));
-                    }
-                }
+                terminateParticipantBridgeSession(participant);
             }
             for (Participant participant : participants)
             {
@@ -2782,6 +2749,33 @@ public class JitsiMeetConferenceImpl
                         hasToStartMuted(participant, false));
             }
         }
+    }
+
+    private BridgeSession terminateParticipantBridgeSession(@NotNull Participant participant)
+    {
+        BridgeSession session = participant.getBridgeSession();
+        participant.terminateBridgeSession();
+
+        // Expire the OctoEndpoints for this participant on other
+        // bridges.
+        if (session != null)
+        {
+            MediaSourceMap removedSources = participant.getSourcesCopy();
+            MediaSourceGroupMap removedGroups = participant.getSourceGroupsCopy();
+
+            // Locking participantLock and the bridges is okay (or at
+            // least used elsewhere).
+            synchronized (bridges)
+            {
+                operationalBridges()
+                    .filter(bridge -> !bridge.equals(session))
+                    .forEach(
+                        bridge -> bridge.removeSourcesFromOcto(
+                            removedSources, removedGroups));
+            }
+        }
+
+        return session;
     }
 
     /**

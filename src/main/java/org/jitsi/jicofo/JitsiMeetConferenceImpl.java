@@ -2255,7 +2255,7 @@ public class JitsiMeetConferenceImpl
         for (Participant participant : participants)
         {
             // We want to exclude this one
-            if (except.contains(participant))
+            if (except.contains(participant) || participant.getBridgeSession() == null)
             {
                 continue;
             }
@@ -2310,7 +2310,7 @@ public class JitsiMeetConferenceImpl
         for (Participant participant : participants)
         {
             // Excluded this participant groups
-            if (except.contains(participant))
+            if (except.contains(participant) || participant.getBridgeSession() == null)
             {
                 continue;
             }
